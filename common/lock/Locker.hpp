@@ -9,10 +9,6 @@
     分别对信号量，锁，条件变量进行封装
 */
 
-
-/*
-    对锁封装
-*/
 namespace locker_ns{
     class Locker{
     private:

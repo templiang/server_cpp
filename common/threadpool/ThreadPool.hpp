@@ -24,7 +24,7 @@ namespace tp_ns
         pthread_t *_threads;               // 指向线程池数组的指针
         std::vector<pthread_t> *_threads_; // todo
         int _max_requests;                 // 请求队列最大长度
-        std::list<T*> _req_queue;         // 请求队列
+        std::list<T*> _req_queue;          // 请求队列
         locker_ns::Locker _locker;         // 互斥锁，保护请求队列
         locker_ns::Sem _sem;               // 信号量，判断是否有任务需要处理.todo 使用atomic代替
         int _actor_model;                  // 模型
