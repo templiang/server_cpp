@@ -2,8 +2,7 @@
     这是一个线程池
 */
 
-#ifndef THREADPOOL_H
-#define THREADPOOL_H
+#pragma once
 
 #include <pthread.h>
 #include <vector>
@@ -137,5 +136,3 @@ namespace tp_ns
     }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef LOCKER_H
-#define LOCKER_H
+#pragma once
 
 #include <exception>
 #include <pthread.h>
@@ -91,4 +90,3 @@ namespace locker_ns{
         }
     };
 }
-#endif
