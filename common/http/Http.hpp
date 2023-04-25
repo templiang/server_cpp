@@ -13,6 +13,7 @@
 #include <string.h>
 #include <memory>
 #include <vector>
+#include <assert.h>
 #include "../connecter/SqlConnectionPool.hpp"
 #include "../Util.hpp"
 using namespace util_ns;
@@ -87,8 +88,8 @@ namespace http_conn_ns
         // std::string _in_buffer;
         // std::string _out_buffer;
         char _in_buffer[READ_BUFFER];
-        char _out_buffer[WRITE_BUFFER];//我们的发送缓冲区只包含响应行和响应报头，如果请求资源，我们会使用mmap方式映射客户端请求的资源
-        int _read_idx; // int _r_buf_len;
+        char _out_buffer[WRITE_BUFFER]; // 我们的发送缓冲区只包含响应行和响应报头，如果请求资源，我们会使用mmap方式映射客户端请求的资源
+        int _read_idx;                  // int _r_buf_len;
         int _checked_idx;
         int _start_offset; // int _r_offset;
         int _write_idx;
@@ -111,8 +112,8 @@ namespace http_conn_ns
 
         char *_file_map_addr; // 文件映射地址
         struct stat _file_stat;
-        struct iovec _iv[2];
-        int _iv_count;
+        struct iovec _iov[2];
+        int _iov_count;
         int _enable_post;
 
         std::string _req_content_data; // 存储正文数据
@@ -186,18 +187,31 @@ namespace http_conn_ns
     };
 
     // 定义http响应的一些状态信息
-    const char *ok_200_title = "OK";
-    const char *error_400_title = "Bad Request";
-    const char *error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
-    const char *error_403_title = "Forbidden";
-    const char *error_403_form = "You do not have permission to get file form this server.\n";
-    const char *error_404_title = "Not Found";
-    const char *error_404_form = "The requested file was not found on this server.\n";
-    const char *error_500_title = "Internal Error";
-    const char *error_500_form = "There was an unusual problem serving the request file.\n";
+    std::string ok_200_title = "OK";
+    std::string error_400_title = "Bad Request";
+    std::string error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
+    std::string error_403_title = "Forbidden";
+    std::string error_403_form = "You do not have permission to get file form this server.\n";
+    std::string error_404_title = "Not Found";
+    std::string error_404_form = "The requested file was not found on this server.\n";
+    std::string error_500_title = "Internal Error";
+    std::string error_500_form = "There was an unusual problem serving the request file.\n";
 
     void HttpConn::do_precess()
     {
+        HTTP_CODE read_ret = read_process();
+        if (read_ret == NO_REQUEST){
+            // 请求不完整,继续监听读事件
+            FdUtil::epoll_event_mod(_epfd,_sockfd,EPOLLIN,_trig_mode);
+            return;
+        }
+        
+        if (!write_process(read_ret)){
+            close_conn();
+        }
+        // 现在，我们已经将数据写入到了自定义的输出缓冲区，我们需要关注写事件，以待合适的时机将数据发送到内核
+        FdUtil::epoll_event_mod(_epfd, _sockfd, EPOLLOUT, _trig_mode);
+
     }
 
     // 初始化一个建立的http连接
@@ -773,7 +787,7 @@ namespace http_conn_ns
         if (_bytes_not_send == 0)
         {
             // 写事件一般一直是就绪的。所以当数据已经发送完成，我们便不再关注写事件，避免epoll一直被写事件触发
-            // 同时，我们将对象内的成员重新初始化
+            // 同时，我们将对象内的成员重置
             FdUtil::epoll_event_mod(_epfd, _sockfd, EPOLLIN, _trig_mode);
             _init();
             return true;
@@ -781,18 +795,82 @@ namespace http_conn_ns
 
         while (true)
         {
-            ret = writev(_sockfd, _iv, _iv_count);
+            ret = writev(_sockfd, _iov, _iov_count);
 
-            if (ret < 0)
+            if (ret > 0)
             {
-                if(errno == EAGAIN || errno == EWOULDBLOCK){
+                _bytes_have_send += ret;
+                _bytes_not_send -= ret;
 
+                // 数据已发完
+                if (_bytes_not_send <= 0)
+                {
+                    unmap();
+                    FdUtil::epoll_event_mod(_epfd, _sockfd, EPOLLIN, _trig_mode);
+
+                    if (_linger)
+                    {
+                        _init();
+                        return true;
+                    }
+                    else
+                    {
+                        return true;
+                    }
                 }
+                // 数据未发完，更新下次需要发送数据的地址与长度
+                if (_bytes_have_send >= _iov[0].iov_len )
+                {
+                    // iv[0]数据已发完，更新下次需要发送数据的地址与长度
+                    assert(_iov_count == 2);
+                    int offset = _bytes_have_send - _iov[0].iov_len;
+                    _iov[0].iov_len = 0;
+                    _iov[1].iov_base = _file_map_addr + offset;
+                    _iov[1].iov_len = _bytes_not_send;
+                }
+                else
+                {
+                    _iov[0].iov_base += _bytes_have_send;
+                    _iov[0].iov_len -= _bytes_have_send;
+                }
+            }
+            else
+            {
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                {
+                    // 内核输出缓冲区已满，writev未完成向内核缓冲区写数据，此时我们继续关注写事件，等待机会再次尝试写入
+                    FdUtil::epoll_event_mod(_epfd, _sockfd, EPOLLOUT, _trig_mode);
+                    return true;
+                }
+                if (errno == EINTR)
+                {
+                    // 写入被信号中断
+                    continue;
+                }
+
+                // 写入失败，不能继续写入
+                unmap();
+                return false;
             }
         }
     }
     bool HttpConn::add_response(const char *format, ...)
     {
+        if (_write_idx >= WRITE_BUFFER)
+            return false;
+        va_list arg_list;
+        va_start(arg_list, format);
+        int len = vsnprintf(_out_buffer + _write_idx, WRITE_BUFFER - 1 - _write_idx, format, arg_list);
+        if (len >= (WRITE_BUFFER - 1 - _write_idx))
+        {
+            va_end(arg_list);
+            return false;
+        }
+        _write_idx += len;
+        va_end(arg_list);
+
+        printf("respone:%s", _out_buffer);
+        return true;
     }
 
     bool HttpConn::add_status_line(int status, const char *title)
@@ -826,6 +904,73 @@ namespace http_conn_ns
     }
     bool HttpConn::write_process(HTTP_CODE ret)
     {
-    }
+        switch (ret)
+        {
+        case INTERNAL_ERROR:
+        {
+            add_status_line(500, error_500_title.c_str());
+            add_headers(error_500_form.size());
+            if (!add_content(error_500_form.c_str()))
+            {
+                return false;
+            }
+            break;
+        }
+        case BAD_REQUEST:
+        {
+            add_status_line(404, error_404_title.c_str());
+            add_headers(error_404_form.size());
+            if (!add_content(error_404_form.c_str())){
+                return false;
+            }
+            break;
+        }
+        case FORBIDDEN_REQUEST:
+        {
+            add_status_line(403,error_403_title.c_str());
+            add_headers(error_403_form.size());
+            if (!add_content(error_403_form.c_str())){
+                return false;
+            }
+            break;
+        }
+        case FILE_REQUEST:
+        {
+            add_status_line(200,ok_200_title.c_str());
 
+            if (_file_stat.st_size != 0){
+                // 1.客户端请求了有效的服务器资源
+                add_headers(_file_stat.st_size);
+
+                // 挂载状态行和响应头
+                _iov[0].iov_base = _out_buffer;
+                _iov[0].iov_len = _write_idx;
+
+                // 挂载有效载荷
+                _iov[1].iov_base = _file_map_addr;
+                _iov[1].iov_len = _file_stat.st_size;
+
+                _iov_count = 2;
+                _bytes_not_send = _write_idx + _file_stat.st_size;
+                return true;
+            }
+            else{
+                const char *ok_string = "<html><body></body></html>";
+                add_headers(strlen(ok_string));
+                if (!add_content(ok_string)){
+                    return false;
+                }
+                break;
+            }
+        }
+        default:
+            return false;
+        }
+
+        _iov[0].iov_base = _out_buffer;
+        _iov[0].iov_len = _write_idx;
+        _iov_count = 1;
+        _bytes_not_send = _write_idx;
+        return true;
+    }
 }

@@ -3,6 +3,7 @@
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <sys/time.h>
 #include <fcntl.h>
 #include <fstream>
@@ -11,6 +12,50 @@
 
 namespace util_ns
 {
+    class TimerUtil;
+    class FdUtil;
+    struct ClientInfo
+    {
+        struct sockaddr_in _address;
+        int _sockfd;
+        TimerUtil *_timer;
+    };
+    typedef void (*callback_t)(ClientInfo *);
+
+    struct TimerUtil
+    {
+        time_t _expire;
+        callback_t _cb_func;
+        ClientInfo *_user_info;
+        TimerUtil *_pre;
+        TimerUtil *_next;
+
+        TimerUtil() : _cb_func(nullptr), _user_info(nullptr), _pre(nullptr), _next(nullptr)
+        {
+        }
+    };
+
+    class SortTimerList
+    {
+    private:
+        TimerUtil *_head;
+        TimerUtil *tail;
+
+    private:
+        void add_timer(TimerUtil *timer, TimerUtil *list_head)
+        {
+        }
+
+    public:
+        SortTimerList(){};
+        ~SortTimerList(){};
+
+        void add_timer(TimerUtil *timer);
+        void adjust_timer(TimerUtil *timer);
+        void del_timer(TimerUtil *timer);
+        void tick();
+    };
+
     enum TRIG_MODE
     {
         LT = 0,
