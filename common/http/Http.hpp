@@ -282,6 +282,7 @@ namespace http_conn_ns
         if (mysql == nullptr)
         {
             // TODO
+            assert(0);
         }
 
         // 在user表中检获取所有的username，passwd数据
