@@ -30,7 +30,7 @@ namespace timer_ns
     {
         time_t _expire_time;    // 超时时间
         callback_t _cb_func;    // 回调函数
-        ClientInfo *_user_info; // 链接资源信息
+        ClientInfo *_user_info; // 回指http连接资源信息
         Timer *_pre;
         Timer *_next;
 
@@ -81,8 +81,9 @@ namespace timer_ns
         Utils() {}
         ~Utils() {}
 
-        void init(int fd){};
+        void init(int timeslot){};
         static void sig_handler(int sig){};
+        //sig:需要捕捉的信号  handler:自定义捕捉函数
         void set_sig(int sig, void (*handler)(int), bool restart = true){};
 
         // 定时处理任务，重新定时以不断触发SIGALRM信号
@@ -291,3 +292,5 @@ namespace timer_ns
         HttpConn::_user_count--;
     }
 }
+
+
