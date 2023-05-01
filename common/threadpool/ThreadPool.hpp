@@ -36,16 +36,16 @@ namespace thread_pool_ns
                                                _conn_pool(conn_pool),
                                                _thread_number(thread_number),
                                                _max_requests(max_requests),
-                                               _threads(nullptr), _threads_(nullptr),
+                                               _threads(nullptr), _threads_(nullptr)
         {
             assert(thread_number > 0 && max_requests > 0);
             _thread_number = thread_number;
             _max_requests = max_requests;
             // 申请线程池
             _threads = new pthread_t[_thread_number];
-            _threads_ = new vector<pthread_t>(_thread_number);
+            _threads_ = new std::vector<pthread_t>(_thread_number);
 
-            if (_thread == nullptr)
+            if (_threads == nullptr)
             {
                 throw std::exception();
             }
@@ -85,7 +85,7 @@ namespace thread_pool_ns
                 _locker.unlock(); // 及时释放锁，谨防死锁
                 return false;
             }
-            req->_state = state;
+            req->_io_state = state;
             _req_queue.push_back(req);
             _locker.unlock();
 
@@ -129,6 +129,8 @@ namespace thread_pool_ns
     template <typename T>
     void ThreadPool<T>::run()
     {
+#define READ 0
+#define WRITE 1
         while (true)
         {
             _sem.wait();
@@ -150,7 +152,46 @@ namespace thread_pool_ns
             }
 
             std::cout << "request run" << std::endl;
-            // todo.........
+
+            // Reactor
+            if (_actor_model == 1)
+            {
+                if ((int)(req->_io_state) == READ)
+                {
+                    if (req->read_once() == 1)
+                    {
+                        // 从内核缓冲区读取数据到自定义输入缓冲区成功
+                        req->_improv = 1;
+                        ConnectionPoolRAII mysql_conn(_conn_pool, &req->_mysql);
+                        // 解析报文，生成响应，并将响应写入自定义的输出缓冲区
+                        req->do_process();
+                    }
+                    else
+                    {
+                        // 失败，设置定时器状态，等待处理
+                        req->_improv = 1;
+                        req->_timer_flag = 1;
+                    }
+                }
+                else
+                {
+                    // WRITE
+                    if (req->write() /*将http输出缓冲区的数据写入到内核缓冲区*/)
+                    {
+                        req->_improv = 1;
+                    }
+                    else
+                    {
+                        req->_improv = 1;
+                        req->_timer_flag = 1;
+                    }
+                }
+            }
+            else
+            {
+                // Proactor
+                // todo.........
+            }
         }
     }
 
