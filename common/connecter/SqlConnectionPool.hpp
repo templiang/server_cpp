@@ -42,22 +42,20 @@ public:
               const std::string &db_name,
               int port,
               int max_conn_nums,
-              int enable_log){};
-    static ConnectionPool *get_instance(){}; // 获取单例
-    MYSQL *get_conn(){};                     // 获取数据库连接
-    bool release_conn(MYSQL *conn){};        // 释放连接
-    int get_free_conn_nums(){};              // 获取空闲连接
-    void destory_pool(){};                   // 清理连接池
+              int enable_log);
+    static ConnectionPool *get_instance(); // 获取单例
+    MYSQL *get_conn();                     // 获取数据库连接
+    bool release_conn(MYSQL *conn);        // 释放连接
+    int get_free_conn_nums();              // 获取空闲连接
+    void destory_pool();                   // 清理连接池
 
 private:
-    ConnectionPool(){}
-    ~ConnectionPool(){}
+    ConnectionPool();
+    ~ConnectionPool();
     ConnectionPool(const ConnectionPool &) = delete;            // 禁止拷贝
     ConnectionPool &operator=(const ConnectionPool &) = delete; // 禁止赋值
 };
-// static成员变量需在类外初始化
-ConnectionPool *ConnectionPool::_pool = nullptr;
-std::mutex *ConnectionPool::_mtx = new std::mutex();
+
 
 // 创建对象时从连接池中取出一个Mysql连接，对象生命周期结束时调用析构函数将Mysql连接归还连接池
 class ConnectionPoolRAII
@@ -67,6 +65,6 @@ private:
     ConnectionPool *_conn_pool;
 
 public:
-    ConnectionPoolRAII(ConnectionPool *, MYSQL **){}
-    ~ConnectionPoolRAII(){}
+    ConnectionPoolRAII(ConnectionPool *, MYSQL **);
+    ~ConnectionPoolRAII();
 };

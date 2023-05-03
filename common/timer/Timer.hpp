@@ -16,7 +16,7 @@ using namespace http_conn_ns;
 
 namespace timer_ns
 {
-    class Timer;
+    struct Timer;
     struct ClientInfo
     {
         struct sockaddr_in _address;
@@ -46,7 +46,7 @@ namespace timer_ns
         Timer *_tail;
 
     private:
-        void add_timer(Timer *timer, Timer *list_head){};
+        void add_timer(Timer *timer, Timer *list_head);
 
     public:
         SortTimerList() : _head(nullptr), _tail(nullptr)
@@ -78,18 +78,20 @@ namespace timer_ns
         SortTimerList _timer_list;
 
     public:
-        Utils() {}
-        ~Utils() {}
+        Utils(){}
+        ~Utils(){} 
 
-        void init(int timeslot){};
-        static void sig_handler(int sig){};
+        void init(int timeslot);
+        static void sig_handler(int sig);
         //sig:需要捕捉的信号  handler:自定义捕捉函数
-        void set_sig(int sig, void (*handler)(int), bool restart = true){};
+        void set_sig(int sig, void (*handler)(int), bool restart = true);
 
         // 定时处理任务，重新定时以不断触发SIGALRM信号
-        void timer_handler(){};
-        void show_error(int conn_fd, const char *info){};
+        void timer_handler();
+        void show_error(int conn_fd, const char *info);
     };
+
+    void cb_func(ClientInfo *user_info);
 } 
 
 

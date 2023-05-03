@@ -1,5 +1,9 @@
 #include "SqlConnectionPool.hpp"
 
+// static成员变量需在类外初始化
+ConnectionPool *ConnectionPool::_pool = nullptr;
+std::mutex *ConnectionPool::_mtx = new std::mutex();
+
 ConnectionPool::ConnectionPool()
 {
     _cur_conn_nums = 0;

@@ -20,15 +20,17 @@ using namespace util_ns;
 
 #define READ_BUFFER 2048
 #define WRITE_BUFFER 1024
+#define READ 0
+#define WRITE 1
 
 namespace http_conn_ns
 {
     class HttpConn; // 声明
-    enum IO_STATE
-    {
-        READ = 0,
-        WRITE = 1
-    };
+    // enum IO_STATE
+    // {
+    //     READ = 0,
+    //     WRITE = 1
+    // };
     // enum TRIG_MODE{
     //     LT = 0,
     //     ET
@@ -75,7 +77,7 @@ namespace http_conn_ns
         static int _epfd; // 所有Http连接对象共用一个epoll
         static int _user_count;
         MYSQL *_mysql;
-        IO_STATE _io_state;
+        int _io_state;
         int _timer_flag;
         int _improv;
 
@@ -133,8 +135,8 @@ namespace http_conn_ns
         std::string _sql_dbname;
 
     public:
-        HttpConn(){}
-        ~HttpConn(){}
+        HttpConn() {}
+        ~HttpConn() {}
 
     public:
         void init(int sockfd,
@@ -142,21 +144,21 @@ namespace http_conn_ns
                   char *root, TRIG_MODE trig_mode, int enable_log,
                   std::string user,
                   std::string passwd,
-                  std::string sqlname){};
-        void close_conn(bool _close = true){};
-        void do_process(){};
-        int read_once(){};
+                  std::string sqlname);
+        void close_conn(bool _close = true);
+        void do_process();
+        int read_once();
         bool write();
 
         struct sockaddr_in *get_address()
         {
             return &_addr;
         }
-        void init_mysql(ConnectionPool *conn_pool){};
+        void init_mysql(ConnectionPool *conn_pool);
 
     private:
-        void _init(){};
-        HTTP_CODE read_process(){};
+        void _init();
+        HTTP_CODE read_process();
         bool write_process(HTTP_CODE ret);
         HTTP_CODE parse_request_line(char *text);
         HTTP_CODE parse_request_line(std::string);
@@ -174,7 +176,7 @@ namespace http_conn_ns
         bool add_linger();
         bool add_blank_line();
 
-        char *get_line(){};
+        char *get_line();
 
         // 从状态机读取一行
         LINE_STATUS parse_line();
@@ -182,16 +184,4 @@ namespace http_conn_ns
         void unmap();
     };
 
-    // 定义http响应的一些状态信息
-    std::string ok_200_title = "OK";
-    std::string error_400_title = "Bad Request";
-    std::string error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
-    std::string error_403_title = "Forbidden";
-    std::string error_403_form = "You do not have permission to get file form this server.\n";
-    std::string error_404_title = "Not Found";
-    std::string error_404_form = "The requested file was not found on this server.\n";
-    std::string error_500_title = "Internal Error";
-    std::string error_500_form = "There was an unusual problem serving the request file.\n";
-
 }
-    

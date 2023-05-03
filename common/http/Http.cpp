@@ -5,6 +5,17 @@ using namespace http_conn_ns;
 int HttpConn::_epfd = -1;
 int HttpConn::_user_count = 0;
 
+// 定义http响应的一些状态信息
+    std::string ok_200_title = "OK";
+    std::string error_400_title = "Bad Request";
+    std::string error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
+    std::string error_403_title = "Forbidden";
+    std::string error_403_form = "You do not have permission to get file form this server.\n";
+    std::string error_404_title = "Not Found";
+    std::string error_404_form = "The requested file was not found on this server.\n";
+    std::string error_500_title = "Internal Error";
+    std::string error_500_form = "There was an unusual problem serving the request file.\n";
+
 void HttpConn::do_process()
 {
     HTTP_CODE read_ret = read_process();
@@ -297,8 +308,8 @@ HTTP_CODE HttpConn::parse_request_line(std::string line)
     {
         result[1].erase(0, 8);
     }
-
-    size_t pos = result[1].find_first_of('/');
+    // liang
+    pos = result[1].find_first_of('/');
 
     if (pos == std::string::npos)
     {
@@ -552,7 +563,7 @@ HTTP_CODE HttpConn::read_process()
         {
         case CHECK_STATE_REQUESTLINE:
         {
-            ret = parse_request_line(line);
+            ret = parse_request_line(std::string(line));
             if (ret == BAD_REQUEST)
                 return BAD_REQUEST;
             break;
