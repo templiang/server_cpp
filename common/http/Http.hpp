@@ -9,7 +9,7 @@
 #include <sys/mman.h>
 #include <sys/uio.h>
 #include <map>
-#include <mysql.h>
+#include <mysql/mysql.h>
 #include <string.h>
 #include <memory>
 #include <vector>

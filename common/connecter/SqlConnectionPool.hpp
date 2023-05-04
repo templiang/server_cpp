@@ -7,7 +7,7 @@
 #include <string>
 #include <list>
 #include <iostream>
-#include <mysql.h>
+#include <mysql/mysql.h>
 #include <mutex>
 #include "../lock/Locker.hpp"
 

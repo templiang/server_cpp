@@ -21,7 +21,7 @@ void SortTimerList::add_timer(Timer *timer)
 
     // 3.list表中已有结点，list按超时时间参数升序排列，找到响应的插入位置。
     Timer *tmp = _head;
-    while (_head != nullptr)
+    while (tmp != nullptr)
     {
         if (timer->_expire_time < tmp->_expire_time)
         {
@@ -153,7 +153,7 @@ void Utils::init(int timeslot)
     _timeslot = timeslot;
 }
 
-// 信号
+// 信号捕捉函数
 void Utils::sig_handler(int sig)
 {
     int save_errno = errno;

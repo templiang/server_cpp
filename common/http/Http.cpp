@@ -6,15 +6,15 @@ int HttpConn::_epfd = -1;
 int HttpConn::_user_count = 0;
 
 // 定义http响应的一些状态信息
-    std::string ok_200_title = "OK";
-    std::string error_400_title = "Bad Request";
-    std::string error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
-    std::string error_403_title = "Forbidden";
-    std::string error_403_form = "You do not have permission to get file form this server.\n";
-    std::string error_404_title = "Not Found";
-    std::string error_404_form = "The requested file was not found on this server.\n";
-    std::string error_500_title = "Internal Error";
-    std::string error_500_form = "There was an unusual problem serving the request file.\n";
+std::string ok_200_title = "OK";
+std::string error_400_title = "Bad Request";
+std::string error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
+std::string error_403_title = "Forbidden";
+std::string error_403_form = "You do not have permission to get file form this server.\n";
+std::string error_404_title = "Not Found";
+std::string error_404_form = "The requested file was not found on this server.\n";
+std::string error_500_title = "Internal Error";
+std::string error_500_form = "There was an unusual problem serving the request file.\n";
 
 void HttpConn::do_process()
 {
@@ -203,6 +203,7 @@ int HttpConn::read_once()
         {
             // 读取成功，更新缓冲区已使用大小
             _read_idx += ret;
+            std::cout << "request:" << _in_buffer << std::endl;
             return 1;
         }
         else if (ret < 0)
@@ -257,21 +258,17 @@ int HttpConn::read_once()
 HTTP_CODE HttpConn::parse_request_line(std::string line)
 {
     std::vector<std::string> result;
+    std::cout << "-->" << line << std::endl;
+    std::istringstream iss(line);
+    std::string token;
 
-    size_t pos = 0;
-    while (pos != std::string::npos)
-    {
-        size_t next_pos = line.find_first_of(" \t", pos);
-        std::string token = line.substr(pos, next_pos - pos);
-
-        // 如果不是最后一个单词，则将pos移到下一个单词的起始位置
-        if (next_pos != std::string::npos)
-        {
-            // pos = line.find_first_not_of(" \t", next_pos);
-            pos = next_pos + 1;
-        }
+    while (std::getline(iss, token, ' ') || std::getline(iss, token, '\t')) {
         result.push_back(token);
     }
+    // 处理最后一个单词
+    // std::getline(iss, token, '\0');
+    // result.push_back(token);
+   
 
     if (result.size() != 3)
     {
@@ -309,7 +306,7 @@ HTTP_CODE HttpConn::parse_request_line(std::string line)
         result[1].erase(0, 8);
     }
     // liang
-    pos = result[1].find_first_of('/');
+    size_t pos = result[1].find_first_of('/');
 
     if (pos == std::string::npos)
     {
@@ -558,7 +555,7 @@ HTTP_CODE HttpConn::read_process()
     {
         line = get_line();
         _start_offset = _checked_idx;
-        printf("%s", line);
+        printf("%s\n", line);
         switch (_check_state)
         {
         case CHECK_STATE_REQUESTLINE:

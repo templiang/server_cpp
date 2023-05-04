@@ -1,5 +1,5 @@
 #include "SqlConnectionPool.hpp"
-
+#include <string>
 // static成员变量需在类外初始化
 ConnectionPool *ConnectionPool::_pool = nullptr;
 std::mutex *ConnectionPool::_mtx = new std::mutex();
@@ -64,7 +64,7 @@ void ConnectionPool::init(const std::string &host,
 
         if (conn == nullptr)
         {
-            std::cout << "MYSQL ERROR" << std::endl;
+            std::cout << "MYSQL ERROR" <<std::endl;
             exit(1);
         }
 
@@ -144,7 +144,7 @@ void ConnectionPool::destory_pool()
 // 创建对象时从连接池中取出一个Mysql连接，对象生命周期结束时调用析构函数将Mysql连接归还连接池
 ConnectionPoolRAII::ConnectionPoolRAII(ConnectionPool *conn_pool, MYSQL **mysql)
 {
-    *mysql = _conn_pool->get_conn();
+    *mysql = conn_pool->get_conn();
 
     _conn_pool = conn_pool;
     _sql_conn = *mysql;
