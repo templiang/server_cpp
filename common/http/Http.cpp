@@ -19,6 +19,7 @@ std::string error_500_form = "There was an unusual problem serving the request f
 void HttpConn::do_process()
 {
     HTTP_CODE read_ret = read_process();
+    printf("read_ret=%d\n",read_ret);
     if (read_ret == NO_REQUEST)
     {
         // 请求不完整,继续监听读事件
@@ -318,7 +319,7 @@ HTTP_CODE HttpConn::parse_request_line(std::string line)
     // 当url等于'/'时
     if (_url_ == "/")
     {
-        _url_ += "judge,html";
+        _url_ += "judge.html";
     }
 
     // 至此，请求行解析完毕,状态切换至解析请求头
@@ -406,7 +407,7 @@ HTTP_CODE HttpConn::parse_headers(char *line)
     else
     {
         // todo
-        printf("oop!unknow header: %s", line);
+        printf("oop!unknow header: %s\n", line);
     }
     return NO_REQUEST;
 }
@@ -428,10 +429,9 @@ HTTP_CODE HttpConn::do_respone()
 {
     _real_file = _doc_root;
     int len = _real_file.size();
-    printf("url:%s\n", _url_);
 
     size_t pos = _url_.find_last_of('/');
-    if ((pos != std::string::npos))
+    if ((pos == std::string::npos))
         return BAD_REQUEST;
     char flag = _url_[pos + 1];
 
@@ -450,7 +450,7 @@ HTTP_CODE HttpConn::do_respone()
 
         pos = _req_content_data.find_last_of('=');
         passwd = _req_content_data.substr(pos + 1, std::string::npos);
-
+     
         if (flag == '3')
         {
             // 注册。注册前检测用户名是否已注册
@@ -462,7 +462,7 @@ HTTP_CODE HttpConn::do_respone()
                 _lock.lock();
                 int ret = mysql_query(_mysql, sql_insert.c_str());
                 _users.insert({user_name, passwd});
-                _lock.lock();
+                _lock.unlock();
 
                 if (ret == 0)
                 {
@@ -496,6 +496,11 @@ HTTP_CODE HttpConn::do_respone()
     }
 
     // 在POST后,flag是否需要重新赋值？
+    pos = _url_.find_last_of('/');
+    if ((pos == std::string::npos))
+        return BAD_REQUEST;
+    flag = _url_[pos + 1];
+
     switch (flag)
     {
     case '0':
@@ -515,10 +520,12 @@ HTTP_CODE HttpConn::do_respone()
         break;
     default:
         // 此时为请求图片
+        _real_file = _doc_root;
         _real_file += _url_;
         break;
     }
 
+    printf("file patj:%s\n",_real_file.c_str());
     if (stat(_real_file.c_str(), &_file_stat) != 0)
     {
         return NO_RESOURCE;
@@ -687,7 +694,6 @@ bool HttpConn::add_response(const char *format, ...)
     _write_idx += len;
     va_end(arg_list);
 
-    printf("respone:%s", _out_buffer);
     return true;
 }
 

@@ -190,7 +190,7 @@ void WebServer::adjust_timer(Timer *timer)
     timer->_expire_time = cur_time + 3 * TIMESLOT;
     _utils._timer_list.adjust_timer(timer);
 
-    printf("adjust timer once");
+    printf("adjust timer once\n");
 }
 
 void WebServer::deal_timer(Timer *timer, int sockfd)
@@ -201,7 +201,7 @@ void WebServer::deal_timer(Timer *timer, int sockfd)
         _utils._timer_list.del_timer(timer);
 
         // TODO
-        printf("close fd %d , %d", _user_timer[sockfd]._sockfd, sockfd);
+        printf("close fd %d , %d\n", _user_timer[sockfd]._sockfd, sockfd);
     }
 }
 
@@ -217,12 +217,12 @@ bool WebServer::accepter()
 
         if (connfd < 0)
         {
-            printf("accept error:errno is:%d", errno);
+            printf("accept error:errno is:%d\n", errno);
         }
         if (HttpConn::_user_count >= MAX_FD)
         {
             _utils.show_error(connfd, "Internal server busy");
-            printf("Internal server busy");
+            printf("Internal server busy\n");
             return false;
         }
         http_create_with_timer(connfd, client_address);
@@ -235,13 +235,13 @@ bool WebServer::accepter()
             int connfd = accept(_listenfd, (struct sockaddr *)&client_address, &addr_length);
             if (connfd < 0)
             {
-                printf("accept error:errno is:%d", errno);
+                printf("accept error:errno is:%d\n", errno);
                 break;
             }
             if (HttpConn::_user_count >= MAX_FD)
             {
                 _utils.show_error(connfd, "Internal server busy");
-                printf("Internal server busy");
+                printf("Internal server busy\n");
                 break;
             }
 
@@ -379,7 +379,7 @@ void WebServer::event_loop()
         int evt_nums = epoll_wait(_epfd, _events, MAX_EVENT_NUMBER, -1);
         if (evt_nums < 0 && errno != EINTR)
         {
-            printf("epoll failure");
+            printf("epoll failure\n");
             break;
         }
 
@@ -409,7 +409,7 @@ void WebServer::event_loop()
                 bool ret = dealwithsignal(timeout, stop_server);
                 if (ret == false)
                 {
-                    printf("dealclientdata failure");
+                    printf("dealclientdata failure\n");
                 }
             }
             else if (evt & EPOLLIN)
@@ -425,7 +425,7 @@ void WebServer::event_loop()
         if (timeout)
         {
             _utils.timer_handler();
-            printf("timer tick");
+            printf("timer tick\n");
             timeout = false;
         }
     }
